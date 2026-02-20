@@ -205,27 +205,20 @@ const installBanner = document.getElementById('install-banner');
 const btnInstallApp = document.getElementById('btn-install-app');
 
 window.addEventListener('beforeinstallprompt', (e) => {
-  // Previne que o mini-infobar padrão do Chrome apareça
   e.preventDefault();
-  // Guarda o evento para acionar mais tarde
   deferredPrompt = e;
   
-  // Mostra o nosso banner elegante após 2 segundos para não assustar o usuário
   setTimeout(() => {
     installBanner.classList.add('show');
   }, 2000);
 });
 
 btnInstallApp.addEventListener('click', async () => {
-  // Esconde o banner
   installBanner.classList.remove('show');
   if (deferredPrompt) {
-    // Mostra o prompt nativo de instalação
     deferredPrompt.prompt();
-    // Aguarda o usuário responder ao prompt
     const { outcome } = await deferredPrompt.userChoice;
     console.log(`Escolha do usuário: ${outcome}`);
-    // Limpa a variável
     deferredPrompt = null;
   }
 });
@@ -234,9 +227,8 @@ function closeInstallBanner() {
   installBanner.classList.remove('show');
 }
 
-
 // ==========================================
-// CONFIGURAÇÃO E AUTENTICAÇÃO
+// CONFIGURAÇÃO, AUTENTICAÇÃO E AUTO-LOGIN
 // ==========================================
 const D = { user: null, members: [], sessions: [], gincanaGroups: [], gincanaPoints: [], gincanaYearRank: [], chatMessages: [] };
 
@@ -263,9 +255,13 @@ function toast(icon,msg){
   document.body.appendChild(t); setTimeout(()=>t.remove(),3000);
 }
 
+// Lógica de Login Atualizada com LocalStorage
 function doLogin(){
   const n = document.getElementById('rn').value.trim();
   if(!n) { toast('⚠️', 'Preencha o seu nome!'); return; }
+  
+  // Salva o nome na memória do celular
+  localStorage.setItem('jovemAppNome', n);
   
   D.user = { name: n };
   document.getElementById('auth').style.display = 'none';
@@ -277,10 +273,22 @@ function doLogin(){
 
 function doLogout(){
   D.user = null;
+  // Remove o nome da memória ao sair
+  localStorage.removeItem('jovemAppNome');
+  
   document.getElementById('app').classList.remove('on');
   document.getElementById('auth').style.display = 'flex';
   document.getElementById('rn').value = '';
 }
+
+// Espião que roda ao abrir o site para logar automático
+window.addEventListener('DOMContentLoaded', () => {
+  const nomeSalvo = localStorage.getItem('jovemAppNome');
+  if(nomeSalvo) {
+    document.getElementById('rn').value = nomeSalvo;
+    doLogin();
+  }
+});
 
 // ==========================================
 // CARREGAMENTO DE DADOS (SOMENTE LEITURA)
@@ -419,7 +427,7 @@ function renderWaChamadas() {
         const st = calcAtt(me.id);
         mMe.innerHTML = `E aí, <b>${me.name}</b>!<br>Sua frequência na igreja neste ano é de <b style="color:${pcol(st.pct)}; font-size:18px;">${st.pct}%</b>.<br><br>Você marcou presença em <b>${st.pres}</b> dos <b>${st.tot}</b> encontros realizados.`;
     } else {
-        mMe.innerHTML = `Seu nome (<b>${D.user.name}</b>) não foi encontrado exatamente como no cadastro oficial, ou não há chamadas registradas.<br><br><i>Dica: digite seu nome exatamente igual ao que o líder cadastrou.</i>`;
+        mMe.innerHTML = `Seu nome (<b>${D.user.name}</b>) não foi encontrado exatamente como no cadastro oficial, ou não há chamadas registradas.<br><br><i>Dica: digite seu nome exatamente igual ao que o líder cadastrou. Pode clicar no botão de sair (porta ao lado do seu nome lá em cima) e tentar novamente se digitou algo errado.</i>`;
     }
 
     const sess = D.sessions.slice(0, 5);
