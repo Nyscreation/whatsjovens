@@ -8,6 +8,7 @@
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0B141A">
 <meta name="mobile-web-app-capable" content="yes">
+<link rel="apple-touch-icon" href="icon-192x192.png">
 
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
@@ -85,6 +86,17 @@ body{font-family:var(--fn);background:var(--bg);color:var(--tx);height:100vh;ove
 .wa-btn { background: var(--ac); color: #0B141A; border: none; width: 44px; height: 44px; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; font-size: 18px; flex-shrink: 0; transition: transform 0.2s;}
 .wa-btn:active { transform: scale(0.9); }
 
+/* BANNER DE INSTALAÇÃO (PWA) */
+.install-banner { position: fixed; bottom: -120px; left: 0; width: 100%; background: #1F2C34; padding: 20px; display: flex; align-items: center; gap: 15px; z-index: 9999; border-top: 1px solid #202C33; box-shadow: 0 -10px 30px rgba(0,0,0,0.8); transition: bottom 0.4s cubic-bezier(.4,0,.2,1); }
+.install-banner.show { bottom: 0; }
+.install-icon { width: 50px; height: 50px; background: var(--ac); border-radius: 12px; display: flex; justify-content: center; align-items: center; font-size: 24px; flex-shrink: 0; color: #000; font-weight: 800; }
+.install-text { flex: 1; }
+.install-text h4 { font-size: 15px; font-weight: 800; color: #fff; margin-bottom: 3px; }
+.install-text p { font-size: 12px; color: var(--tx2); line-height: 1.3; }
+.install-actions { display: flex; gap: 10px; }
+.btn-inst-ok { background: var(--ac); color: #000; border: none; padding: 10px 16px; border-radius: 20px; font-weight: 800; font-size: 13px; cursor: pointer; }
+.btn-inst-no { background: none; border: none; color: var(--tx2); padding: 10px; font-weight: 800; font-size: 13px; cursor: pointer; }
+
 /* Toasts / Alerts */
 .toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:9999;background:var(--ac);color:#000;border-radius:30px;padding:12px 24px;box-shadow:0 4px 15px rgba(0,0,0,0.5);display:flex;align-items:center;gap:10px;animation:su .3s ease; font-weight:800; font-size:13px;}
 @keyframes su{from{transform:translate(-50%, -20px);opacity:0}to{transform:translate(-50%, 0);opacity:1}}
@@ -94,6 +106,18 @@ body{font-family:var(--fn);background:var(--bg);color:var(--tx);height:100vh;ove
 </style>
 </head>
 <body>
+
+<div id="install-banner" class="install-banner">
+  <div class="install-icon">🔥</div>
+  <div class="install-text">
+    <h4>App da Juventude</h4>
+    <p>Instale nosso app no celular para acessar mais rápido!</p>
+  </div>
+  <div class="install-actions">
+    <button class="btn-inst-no" onclick="closeInstallBanner()">Agora Não</button>
+    <button class="btn-inst-ok" id="btn-install-app">Instalar</button>
+  </div>
+</div>
 
 <div id="auth">
   <div class="auth-card">
@@ -165,6 +189,53 @@ body{font-family:var(--fn);background:var(--bg);color:var(--tx);height:100vh;ove
 
 <script>
 // ==========================================
+// REGISTRO DE PWA & SERVICE WORKER
+// ==========================================
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .then(reg => console.log('Service Worker registrado!', reg))
+      .catch(err => console.error('Erro no Service Worker:', err));
+  });
+}
+
+// Lógica para o Botão de Instalação (PWA)
+let deferredPrompt;
+const installBanner = document.getElementById('install-banner');
+const btnInstallApp = document.getElementById('btn-install-app');
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  // Previne que o mini-infobar padrão do Chrome apareça
+  e.preventDefault();
+  // Guarda o evento para acionar mais tarde
+  deferredPrompt = e;
+  
+  // Mostra o nosso banner elegante após 2 segundos para não assustar o usuário
+  setTimeout(() => {
+    installBanner.classList.add('show');
+  }, 2000);
+});
+
+btnInstallApp.addEventListener('click', async () => {
+  // Esconde o banner
+  installBanner.classList.remove('show');
+  if (deferredPrompt) {
+    // Mostra o prompt nativo de instalação
+    deferredPrompt.prompt();
+    // Aguarda o usuário responder ao prompt
+    const { outcome } = await deferredPrompt.userChoice;
+    console.log(`Escolha do usuário: ${outcome}`);
+    // Limpa a variável
+    deferredPrompt = null;
+  }
+});
+
+function closeInstallBanner() {
+  installBanner.classList.remove('show');
+}
+
+
+// ==========================================
 // CONFIGURAÇÃO E AUTENTICAÇÃO
 // ==========================================
 const D = { user: null, members: [], sessions: [], gincanaGroups: [], gincanaPoints: [], gincanaYearRank: [], chatMessages: [] };
@@ -219,13 +290,12 @@ async function loadDataFromFirebase() {
   toast('⏳', 'Sincronizando...');
   
   try {
-    // Busca Membros e Sessões
     const [mSnap, sSnap, ggSnap, gySnap, gpSnap] = await Promise.all([
       db.collection("members").get(),
       db.collection("sessions").orderBy("date", "desc").get(),
       db.collection("gincana_groups").get(),
       db.collection("gincana_year_rank").where("year","==",new Date().getFullYear()).get(),
-      db.collection("gincana_points").orderBy("date", "desc").limit(20).get() // Limita histórico
+      db.collection("gincana_points").orderBy("date", "desc").limit(20).get()
     ]);
 
     if (!mSnap.empty) D.members = mSnap.docs.map(d => d.data());
@@ -234,7 +304,7 @@ async function loadDataFromFirebase() {
     if (!gySnap.empty) D.gincanaYearRank = gySnap.docs.map(d => d.data());
     if (!gpSnap.empty) D.gincanaPoints = gpSnap.docs.map(d => d.data());
 
-    initChatListener(); // Liga o chat em tempo real
+    initChatListener();
     toast('✅', 'Conectado!');
   } catch (e) {
     console.error(e);
@@ -342,7 +412,6 @@ function renderWaGincana() {
 // LÓGICA DE CHAMADAS (ESPELHO)
 // ==========================================
 function renderWaChamadas() {
-    // Procura o membro comparando o nome digitado com o banco de dados
     const me = D.members.find(m => m.name.toLowerCase() === D.user.name.toLowerCase());
     const mMe = document.getElementById('wa-mirror-me');
     
