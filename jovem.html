@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Área do Jovem · Vida Nova</title>
+
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0B141A">
+<meta name="mobile-web-app-capable" content="yes">
+
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+
+<style>
+/* ==========================================================================
+   DESIGN SYSTEM - EXCLUSIVO JOVEM (WHATSAPP STYLE)
+   ========================================================================== */
+:root {
+  --bg: #0B141A;
+  --card: #1F2C34;
+  --bd: #202C33;
+  --ac: #00A884; /* Verde WhatsApp */
+  --tx: #E9EDEF;
+  --tx2: #8696A0;
+  
+  --em: #00A884;
+  --ro: #EF4444;
+  --go: #3B82F6;
+  
+  --fn: 'Sora', sans-serif;
+  --tr: all .3s ease;
+}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:var(--fn);background:var(--bg);color:var(--tx);height:100vh;overflow:hidden;font-size:14px;line-height:1.6}
+
+/* AUTH ESTRUTURA */
+#auth{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg);padding:20px;position:absolute;inset:0;z-index:100;}
+.auth-card{background:var(--card);border:1px solid var(--bd);border-radius:24px;padding:40px 24px;width:100%;max-width:360px;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,0.5);}
+.auth-logo-icon{font-size:48px;margin-bottom:14px;}
+.auth-logo h1{font-size:22px;font-weight:800;color:var(--tx);margin-bottom:4px;}
+.auth-logo p{color:var(--tx2);font-size:13px;margin-bottom:28px;}
+.fg{margin-bottom:16px;text-align:left;}
+.fg label{display:block;font-size:11px;font-weight:700;color:var(--tx2);margin-bottom:8px;text-transform:uppercase;letter-spacing:1px}
+.fc{width:100%;padding:14px 16px;background:var(--bg);border:1px solid var(--bd);border-radius:12px;color:var(--tx);font-family:var(--fn);font-size:15px;outline:none;transition:var(--tr)}
+.fc:focus{border-color:var(--ac);}
+.btn-p{width:100%;padding:16px;background:var(--ac);border:none;border-radius:12px;color:#0B141A;font-family:var(--fn);font-size:15px;font-weight:800;cursor:pointer;transition:var(--tr);margin-top:10px;}
+.btn-p:active{transform:scale(0.98)}
+
+/* APP ESTRUTURA (TELA CHEIA) */
+#app{display:none; height:100vh; flex-direction:column; background:var(--bg); position:relative;}
+#app.on{display:flex;}
+
+.wa-header { background: #1F2C34; padding: 15px 15px 0 15px; display:flex; flex-direction: column; gap: 12px; z-index: 2; padding-top: max(15px, env(safe-area-inset-top));}
+.wa-top { display: flex; align-items: center; gap: 12px; }
+.wa-avatar { width: 40px; height: 40px; background: var(--ac); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #fff; font-weight:800;}
+.wa-title { font-weight: 700; font-size: 16px; color: #fff;}
+.wa-sub { font-size: 11px; color: var(--tx2); }
+.wa-logout { margin-left: auto; background: none; border: none; color: var(--tx2); font-size: 20px; cursor: pointer; padding: 5px; }
+
+.wa-tabs { display: flex; gap: 20px; font-size: 13px; color: var(--tx2); font-weight: 700; border-bottom: 1px solid var(--bd); }
+.wa-tab { cursor: pointer; padding-bottom: 10px; flex: 1; text-align: center; position: relative; transition: color 0.2s;}
+.wa-tab.on { color: var(--ac); }
+.wa-tab.on::after { content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 3px; background: var(--ac); border-radius: 3px 3px 0 0; }
+
+.wa-body { flex: 1; overflow-y: auto; padding: 20px 15px; display: flex; flex-direction: column; gap: 8px; position: relative; }
+/* WhatsApp background pattern simulation */
+.wa-body::before { content: ''; position: absolute; inset: 0; background-image: radial-gradient(circle at center, #111B21 0%, #0B141A 100%); opacity: 0.5; z-index: 0; }
+
+.wa-msg { max-width: 85%; padding: 8px 12px; border-radius: 12px; font-size: 14px; position: relative; color: var(--tx); z-index: 1; box-shadow: 0 1px 1px rgba(0,0,0,0.2); line-height: 1.4; word-wrap: break-word;}
+.wa-msg.in { align-self: flex-start; background: #202C33; border-top-left-radius: 0; }
+.wa-msg.out { align-self: flex-end; background: #005C4B; border-top-right-radius: 0; }
+.wa-sender { font-size: 11px; font-weight: 800; margin-bottom: 4px; display: block; color: #53BDEB;}
+.wa-time { font-size: 10px; color: rgba(255,255,255,0.6); float: right; margin-top: 6px; margin-left: 10px; }
+
+.wa-sys-card { background: var(--card); border-radius: 12px; padding: 15px; margin-bottom: 12px; z-index: 1; border-left: 4px solid var(--ac);}
+.wa-sys-title { font-size: 14px; font-weight: 800; color: var(--ac); margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;}
+
+.wa-footer { background: var(--card); padding: 12px; display: flex; gap: 10px; align-items: center; z-index: 2; padding-bottom: max(12px, env(safe-area-inset-bottom));}
+.wa-input { flex: 1; background: #2A3942; border: none; padding: 14px 18px; border-radius: 24px; color: white; outline: none; font-family: var(--fn); font-size: 14px;}
+.wa-input::placeholder { color: var(--tx2); }
+.wa-btn { background: var(--ac); color: #0B141A; border: none; width: 44px; height: 44px; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; font-size: 18px; flex-shrink: 0; transition: transform 0.2s;}
+.wa-btn:active { transform: scale(0.9); }
+
+/* Toasts / Alerts */
+.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:9999;background:var(--ac);color:#000;border-radius:30px;padding:12px 24px;box-shadow:0 4px 15px rgba(0,0,0,0.5);display:flex;align-items:center;gap:10px;animation:su .3s ease; font-weight:800; font-size:13px;}
+@keyframes su{from{transform:translate(-50%, -20px);opacity:0}to{transform:translate(-50%, 0);opacity:1}}
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--bd);border-radius:2px}
+</style>
+</head>
+<body>
+
+<div id="auth">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="auth-logo-icon">🔥</div>
+      <h1>Área do Jovem</h1>
+      <p>Igreja Vida Nova</p>
+    </div>
+    <div class="fg">
+      <label>Como você se chama?</label>
+      <input type="text" class="fc" id="rn" placeholder="Digite seu Nome Completo">
+    </div>
+    <button class="btn-p" onclick="doLogin()">Entrar no Grupo</button>
+  </div>
+</div>
+
+<div id="app">
+  <div class="wa-header">
+    <div class="wa-top">
+      <div class="wa-avatar">🔥</div>
+      <div>
+        <div class="wa-title">Grupo Vida Nova</div>
+        <div class="wa-sub" id="u-welcome">Conectando...</div>
+      </div>
+      <button class="wa-logout" onclick="doLogout()">🚪</button>
+    </div>
+    <div class="wa-tabs">
+      <div class="wa-tab on" onclick="waTab('chat')">Chat</div>
+      <div class="wa-tab" onclick="waTab('gincana')">Gincana</div>
+      <div class="wa-tab" onclick="waTab('chamadas')">Chamadas</div>
+    </div>
+  </div>
+
+  <div class="wa-body" id="wa-body-chat">
+     <div style="text-align:center; color:var(--tx2); font-size:12px; margin-top:20px; z-index:1;">Carregando mensagens...</div>
+  </div>
+
+  <div class="wa-body" id="wa-body-gincana" style="display:none;">
+     <div class="wa-sys-card">
+       <div class="wa-sys-title">🏆 Top Grupos <span>Ao Vivo</span></div>
+       <div id="wa-mirror-groups" style="color:white; font-size:14px; margin-top:10px;">Carregando...</div>
+     </div>
+     <div class="wa-sys-card">
+       <div class="wa-sys-title">🥇 Jovens Destaque <span>Ano</span></div>
+       <div id="wa-mirror-youths" style="color:white; font-size:14px; margin-top:10px;">Carregando...</div>
+     </div>
+     <div class="wa-sys-card">
+       <div class="wa-sys-title" style="color:#53BDEB">📢 Histórico de Pontos</div>
+       <div id="wa-mirror-points" style="color:var(--tx2); font-size:13px; margin-top:10px;">Carregando...</div>
+     </div>
+  </div>
+
+  <div class="wa-body" id="wa-body-chamadas" style="display:none;">
+     <div class="wa-sys-card" style="border-left-color: var(--go);">
+       <div class="wa-sys-title" style="color:var(--go);">🏅 Meu Status</div>
+       <div id="wa-mirror-me" style="color:var(--tx); font-size:14px; margin-top:10px; line-height:1.6;">Carregando...</div>
+     </div>
+     <div class="wa-sys-card">
+       <div class="wa-sys-title">📋 Últimos Encontros <span>Frequência Geral</span></div>
+       <div id="wa-mirror-sessions" style="color:white; font-size:14px; margin-top:10px;">Carregando...</div>
+     </div>
+  </div>
+
+  <div class="wa-footer" id="wa-footer-chat">
+     <input type="text" class="wa-input" id="wa-input" placeholder="Digite uma mensagem..." autocomplete="off" onkeypress="if(event.key === 'Enter') sendWaMsg()">
+     <button class="wa-btn" onclick="sendWaMsg()">➤</button>
+  </div>
+</div>
+
+<script>
+// ==========================================
+// CONFIGURAÇÃO E AUTENTICAÇÃO
+// ==========================================
+const D = { user: null, members: [], sessions: [], gincanaGroups: [], gincanaPoints: [], gincanaYearRank: [], chatMessages: [] };
+
+const firebaseConfig = {
+  apiKey: "AIzaSyC_Q14h3uSifxeaVP3U-G9pFHn83OC05DQ",
+  authDomain: "jovens-86641.firebaseapp.com",
+  projectId: "jovens-86641",
+  storageBucket: "jovens-86641.firebasestorage.app",
+  messagingSenderId: "503531393581",
+  appId: "1:503531393581:web:46ea380eb36c9936c85ea4"
+};
+
+let db;
+try {
+  firebase.initializeApp(firebaseConfig);
+  db = firebase.firestore();
+} catch (error) {
+  console.error("Erro Firebase:", error);
+}
+
+function toast(icon,msg){
+  const old=document.querySelector('.toast');if(old)old.remove();
+  const t=document.createElement('div'); t.className='toast'; t.innerHTML=`<span>${icon}</span> <span>${msg}</span>`;
+  document.body.appendChild(t); setTimeout(()=>t.remove(),3000);
+}
+
+function doLogin(){
+  const n = document.getElementById('rn').value.trim();
+  if(!n) { toast('⚠️', 'Preencha o seu nome!'); return; }
+  
+  D.user = { name: n };
+  document.getElementById('auth').style.display = 'none';
+  document.getElementById('app').classList.add('on');
+  document.getElementById('u-welcome').textContent = `Bem-vindo(a), ${n.split(' ')[0]}`;
+  
+  loadDataFromFirebase();
+}
+
+function doLogout(){
+  D.user = null;
+  document.getElementById('app').classList.remove('on');
+  document.getElementById('auth').style.display = 'flex';
+  document.getElementById('rn').value = '';
+}
+
+// ==========================================
+// CARREGAMENTO DE DADOS (SOMENTE LEITURA)
+// ==========================================
+async function loadDataFromFirebase() {
+  if(!db) return;
+  toast('⏳', 'Sincronizando...');
+  
+  try {
+    // Busca Membros e Sessões
+    const [mSnap, sSnap, ggSnap, gySnap, gpSnap] = await Promise.all([
+      db.collection("members").get(),
+      db.collection("sessions").orderBy("date", "desc").get(),
+      db.collection("gincana_groups").get(),
+      db.collection("gincana_year_rank").where("year","==",new Date().getFullYear()).get(),
+      db.collection("gincana_points").orderBy("date", "desc").limit(20).get() // Limita histórico
+    ]);
+
+    if (!mSnap.empty) D.members = mSnap.docs.map(d => d.data());
+    if (!sSnap.empty) D.sessions = sSnap.docs.map(d => d.data());
+    if (!ggSnap.empty) D.gincanaGroups = ggSnap.docs.map(d => d.data());
+    if (!gySnap.empty) D.gincanaYearRank = gySnap.docs.map(d => d.data());
+    if (!gpSnap.empty) D.gincanaPoints = gpSnap.docs.map(d => d.data());
+
+    initChatListener(); // Liga o chat em tempo real
+    toast('✅', 'Conectado!');
+  } catch (e) {
+    console.error(e);
+    toast('❌', 'Erro de conexão.');
+  }
+}
+
+// ==========================================
+// FUNÇÕES AUXILIARES DE CÁLCULO
+// ==========================================
+function calcAtt(mid){
+  const id=mid; const tot=D.sessions.length;
+  const pres=D.sessions.reduce((s,x)=>s+(x.att[id]?1:0),0);
+  return{tot,pres,pct:tot?Math.round(pres/tot*100):0};
+}
+function pcol(p){return p>=75?'var(--em)':p>=50?'var(--ac)':'var(--ro)'}
+
+// ==========================================
+// NAVEGAÇÃO WHATSAPP
+// ==========================================
+function waTab(tab) {
+    document.querySelectorAll('.wa-tab').forEach(e => e.classList.remove('on'));
+    document.querySelector(`.wa-tab[onclick="waTab('${tab}')"]`).classList.add('on');
+    
+    document.getElementById('wa-body-chat').style.display = 'none';
+    document.getElementById('wa-body-gincana').style.display = 'none';
+    document.getElementById('wa-body-chamadas').style.display = 'none';
+    document.getElementById('wa-footer-chat').style.display = 'none';
+    
+    document.getElementById(`wa-body-${tab}`).style.display = 'flex';
+    
+    if(tab === 'chat') {
+        document.getElementById('wa-footer-chat').style.display = 'flex';
+        renderWaChat();
+    } else if (tab === 'gincana') {
+        renderWaGincana();
+    } else if (tab === 'chamadas') {
+        renderWaChamadas();
+    }
+}
+
+// ==========================================
+// LÓGICA DO CHAT
+// ==========================================
+function initChatListener() {
+    db.collection("chat_messages").orderBy("timestamp", "asc").onSnapshot((snapshot) => {
+        D.chatMessages = [];
+        snapshot.forEach((doc) => D.chatMessages.push({ id: doc.id, ...doc.data() }));
+        if(document.getElementById('wa-body-chat').style.display !== 'none') renderWaChat();
+    });
+}
+
+function sendWaMsg() {
+    const input = document.getElementById('wa-input');
+    const text = input.value.trim();
+    if(!text || !db) return;
+    
+    const msg = { text: text, senderName: D.user.name, timestamp: new Date().toISOString() };
+    input.value = '';
+    db.collection("chat_messages").add(msg);
+}
+
+function renderWaChat() {
+    const cb = document.getElementById('wa-body-chat');
+    if(!D.chatMessages.length) {
+        cb.innerHTML = '<div style="text-align:center; color:var(--tx2); font-size:12px; margin-top:20px; z-index:1;">Sem mensagens. Dê um "A paz" para o pessoal!</div>';
+        return;
+    }
+    
+    cb.innerHTML = D.chatMessages.map(m => {
+        const isMe = m.senderName === D.user.name;
+        const cls = isMe ? 'out' : 'in';
+        const time = new Date(m.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        return `<div class="wa-msg ${cls}">
+            ${!isMe ? `<span class="wa-sender">${m.senderName}</span>` : ''}
+            ${m.text}
+            <span class="wa-time">${time}</span>
+        </div>`;
+    }).join('');
+    cb.scrollTop = cb.scrollHeight;
+}
+
+// ==========================================
+// LÓGICA DA GINCANA (ESPELHO)
+// ==========================================
+function renderWaGincana() {
+    const grps = [...D.gincanaGroups].sort((a,b) => b.totalPoints - a.totalPoints);
+    const mGrps = document.getElementById('wa-mirror-groups');
+    mGrps.innerHTML = grps.length ? grps.map((g,i) => `<div style="display:flex; justify-content:space-between; margin-bottom:8px; border-bottom:1px solid var(--bd); padding-bottom:8px;"><span><strong style="color:${g.color}">${i+1}º</strong> ${g.name}</span> <strong style="color:var(--em)">${g.totalPoints} pts</strong></div>`).join('') : '<div style="color:var(--tx2)">Sem dados da Gincana.</div>';
+
+    const youths = [...D.gincanaYearRank].sort((a,b) => b.totalPoints - a.totalPoints).slice(0, 5);
+    const mYths = document.getElementById('wa-mirror-youths');
+    mYths.innerHTML = youths.length ? youths.map((y,i) => `<div style="display:flex; justify-content:space-between; margin-bottom:8px; border-bottom:1px solid var(--bd); padding-bottom:8px;"><span><strong style="color:var(--ac)">${i+1}º</strong> ${D.members.find(mx=>mx.id===y.memberId)?.name || 'Jovem'}</span> <strong style="color:var(--em)">${y.totalPoints} pts</strong></div>`).join('') : '<div style="color:var(--tx2)">Sem ranking individual.</div>';
+
+    const pts = D.gincanaPoints.slice(0, 8);
+    const mPts = document.getElementById('wa-mirror-points');
+    mPts.innerHTML = pts.length ? pts.map(p => {
+        const gName = D.gincanaGroups.find(g=>g.id===p.groupId)?.name || '?';
+        const mName = D.members.find(m=>m.id===p.memberId)?.name || '?';
+        return `<div style="margin-bottom:10px; border-bottom:1px solid var(--bd); padding-bottom:6px;"><b>+${p.points} pts</b> para ${mName} (${gName})<br><span style="font-size:12px;color:var(--tx2)">"${p.reason}"</span></div>`;
+    }).join('') : '<div style="color:var(--tx2)">Nenhuma pontuação registrada ainda.</div>';
+}
+
+// ==========================================
+// LÓGICA DE CHAMADAS (ESPELHO)
+// ==========================================
+function renderWaChamadas() {
+    // Procura o membro comparando o nome digitado com o banco de dados
+    const me = D.members.find(m => m.name.toLowerCase() === D.user.name.toLowerCase());
+    const mMe = document.getElementById('wa-mirror-me');
+    
+    if(me && D.sessions.length > 0) {
+        const st = calcAtt(me.id);
+        mMe.innerHTML = `E aí, <b>${me.name}</b>!<br>Sua frequência na igreja neste ano é de <b style="color:${pcol(st.pct)}; font-size:18px;">${st.pct}%</b>.<br><br>Você marcou presença em <b>${st.pres}</b> dos <b>${st.tot}</b> encontros realizados.`;
+    } else {
+        mMe.innerHTML = `Seu nome (<b>${D.user.name}</b>) não foi encontrado exatamente como no cadastro oficial, ou não há chamadas registradas.<br><br><i>Dica: digite seu nome exatamente igual ao que o líder cadastrou.</i>`;
+    }
+
+    const sess = D.sessions.slice(0, 5);
+    const mSess = document.getElementById('wa-mirror-sessions');
+    mSess.innerHTML = sess.length ? sess.map(s => {
+        const vs=Object.values(s.att); const p=vs.filter(Boolean).length, t=D.members.length;
+        const pct = t?Math.round(p/t*100):0;
+        const dt = new Date(s.date+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short'});
+        return `<div style="display:flex; justify-content:space-between; margin-bottom:10px; border-bottom:1px solid var(--bd); padding-bottom:8px;">
+            <span><b>${s.desc}</b><br><span style="font-size:11px;color:var(--tx2)">${dt}</span></span>
+            <span style="text-align:right"><strong style="color:var(--em)">${p}</strong> presentes<br><span style="font-size:11px;color:${pcol(pct)}">${pct}% da rede</span></span>
+        </div>`;
+    }).join('') : '<div style="color:var(--tx2)">Nenhum encontro registrado.</div>';
+}
+</script>
+</body>
+</html>
